@@ -1,0 +1,13 @@
+[tools]
+node = "24.14.1"
+"npm:pnpm" = "11.17.0"
+shellcheck = "0.11.0"
+
+[tasks.setup]
+description = "Install bootstrap dependencies"
+run = "pnpm install --frozen-lockfile"
+
+[tasks.check]
+description = "Validate the landing page and installer"
+depends = ["setup"]
+run = ["shellcheck public/install scripts/check-install.sh", "pnpm check"]

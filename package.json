@@ -1,0 +1,30 @@
+{
+  "name": "@popina/bootstrap",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Popina developer setup landing page and macOS bootstrap",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.14.1"
+  },
+  "packageManager": "pnpm@11.17.0",
+  "scripts": {
+    "build": "next build",
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "dev": "next dev --port 3000",
+    "start": "next start --port 3000",
+    "test": "bash ./scripts/check-install.sh",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "16.3.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "25.0.8",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "typescript": "7.0.2"
+  }
+}

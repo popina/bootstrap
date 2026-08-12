@@ -1,0 +1,420 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+IFS=$'\n\t'
+
+readonly INSTALLER_VERSION="0.1.0"
+readonly NODE_VERSION="24.14.1"
+readonly PNPM_VERSION="11.17.0"
+readonly DEFAULT_POPINA_CLI_VERSION="5.0.5-20260728234909Z"
+
+PROFILE="web"
+WORKSPACE_DIR="${POPINA_WORKSPACE:-$HOME/Workspace}"
+POPINA_CLI_VERSION="${POPINA_CLI_VERSION:-$DEFAULT_POPINA_CLI_VERSION}"
+ASSUME_YES=false
+SHOULD_INSTALL_TEAM_APPS="ask"
+SHOULD_INITIALIZE_PROJECT="ask"
+
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+  readonly BOLD=$'\033[1m'
+  readonly MUTED=$'\033[2m'
+  readonly CYAN=$'\033[36m'
+  readonly GREEN=$'\033[32m'
+  readonly YELLOW=$'\033[33m'
+  readonly RED=$'\033[31m'
+  readonly RESET=$'\033[0m'
+else
+  readonly BOLD=""
+  readonly MUTED=""
+  readonly CYAN=""
+  readonly GREEN=""
+  readonly YELLOW=""
+  readonly RED=""
+  readonly RESET=""
+fi
+
+print_line() {
+  printf '%b\n' "$*"
+}
+
+step() {
+  print_line "\n${CYAN}${BOLD}→${RESET} ${BOLD}$*${RESET}"
+}
+
+success() {
+  print_line "${GREEN}✓${RESET} $*"
+}
+
+note() {
+  print_line "${MUTED}$*${RESET}"
+}
+
+warn() {
+  print_line "${YELLOW}!${RESET} $*" >&2
+}
+
+fail() {
+  print_line "${RED}Error:${RESET} $*" >&2
+  exit 1
+}
+
+handle_error() {
+  local status=$?
+  local line=${1:-unknown}
+  trap - ERR
+  print_line "\n${RED}Setup stopped near line ${line}.${RESET}" >&2
+  print_line "Nothing already installed has been removed. Fix the issue and run the command again." >&2
+  exit "$status"
+}
+
+trap 'handle_error "$LINENO"' ERR
+
+print_help() {
+  cat <<'HELP'
+Popina macOS developer setup
+
+Usage:
+  curl -fsSL https://popina.sh/install | bash
+  curl -fsSL https://popina.sh/install | bash -s -- [options]
+
+Options:
+  --profile web       Select the supported web developer profile
+  --workspace PATH    Choose the projects directory (default: ~/Workspace)
+  --skip-apps         Skip Slack, Linear, and Visual Studio Code
+  --skip-project      Install the machine toolchain without running popina init
+  --yes               Accept installer defaults
+  --help              Show this help
+
+Environment:
+  POPINA_WORKSPACE     Default projects directory
+  POPINA_CLI_VERSION   Override the pinned Popina CLI npm version
+  NO_COLOR             Disable colored output
+HELP
+}
+
+while (($# > 0)); do
+  case "$1" in
+    --profile)
+      (($# >= 2)) || fail '--profile requires a value.'
+      PROFILE="$2"
+      shift 2
+      ;;
+    --profile=*)
+      PROFILE="${1#*=}"
+      shift
+      ;;
+    --workspace)
+      (($# >= 2)) || fail '--workspace requires a path.'
+      WORKSPACE_DIR="$2"
+      shift 2
+      ;;
+    --workspace=*)
+      WORKSPACE_DIR="${1#*=}"
+      shift
+      ;;
+    --skip-apps)
+      SHOULD_INSTALL_TEAM_APPS=false
+      shift
+      ;;
+    --skip-project)
+      SHOULD_INITIALIZE_PROJECT=false
+      shift
+      ;;
+    --yes)
+      ASSUME_YES=true
+      shift
+      ;;
+    --help|-h)
+      print_help
+      exit 0
+      ;;
+    *)
+      fail "Unknown option: $1. Run with --help for usage."
+      ;;
+  esac
+done
+
+case "$PROFILE" in
+  web) ;;
+  mobile)
+    fail 'The mobile developer profile is coming later. Use --profile web for now.'
+    ;;
+  *)
+    fail "Unknown profile: ${PROFILE}. The supported profile is web."
+    ;;
+esac
+
+expand_workspace_path() {
+  if [[ "$WORKSPACE_DIR" == \~ ]]; then
+    WORKSPACE_DIR="$HOME"
+  elif [[ "$WORKSPACE_DIR" == \~/* ]]; then
+    WORKSPACE_DIR="$HOME/${WORKSPACE_DIR:2}"
+  fi
+}
+
+confirm() {
+  local prompt=$1
+  local default_answer=${2:-yes}
+  local hint='[Y/n]'
+  local answer=''
+
+  if [[ "$ASSUME_YES" == true ]]; then
+    return 0
+  fi
+
+  has_tty || fail 'Interactive input is unavailable. Re-run in a terminal or pass --yes with --skip-project.'
+
+  if [[ "$default_answer" == no ]]; then
+    hint='[y/N]'
+  fi
+
+  while true; do
+    printf '%b' "${BOLD}?${RESET} ${prompt} ${MUTED}${hint}${RESET} " > /dev/tty
+    IFS= read -r answer < /dev/tty || fail 'Could not read your answer.'
+
+    if [[ -z "$answer" ]]; then
+      [[ "$default_answer" == yes ]]
+      return
+    fi
+
+    case "$answer" in
+      y|Y|yes|YES|Yes) return 0 ;;
+      n|N|no|NO|No) return 1 ;;
+      *) print_line 'Please answer yes or no.' > /dev/tty ;;
+    esac
+  done
+}
+
+has_tty() {
+  (: < /dev/tty) 2>/dev/null
+}
+
+prompt_workspace() {
+  local answer=''
+
+  if [[ "$ASSUME_YES" == true ]]; then
+    expand_workspace_path
+    return
+  fi
+
+  printf '%b' "${BOLD}?${RESET} Projects directory ${MUTED}[${WORKSPACE_DIR}]${RESET} " > /dev/tty
+  IFS= read -r answer < /dev/tty || fail 'Could not read the workspace path.'
+  if [[ -n "$answer" ]]; then
+    WORKSPACE_DIR="$answer"
+  fi
+  expand_workspace_path
+}
+
+ensure_macos() {
+  [[ "$(uname -s)" == Darwin ]] || fail 'This installer currently supports macOS only. Linux support is coming later.'
+
+  local architecture
+  architecture="$(uname -m)"
+  case "$architecture" in
+    arm64|x86_64) success "macOS detected (${architecture})" ;;
+    *) fail "Unsupported Mac architecture: ${architecture}." ;;
+  esac
+}
+
+load_homebrew_environment() {
+  if [[ -x /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [[ -x /usr/local/bin/brew ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
+}
+
+ensure_homebrew() {
+  load_homebrew_environment
+  if command -v brew >/dev/null 2>&1; then
+    success "Homebrew is already installed"
+    return
+  fi
+
+  has_tty || fail 'Homebrew installation requires an interactive terminal.'
+  step 'Installing Homebrew'
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" < /dev/tty
+  load_homebrew_environment
+  command -v brew >/dev/null 2>&1 || fail 'Homebrew installed, but brew is not available on PATH.'
+  success 'Homebrew installed'
+}
+
+install_formulae() {
+  local packages=(mise git gh)
+  local missing=()
+  local package
+
+  for package in "${packages[@]}"; do
+    if brew list --formula "$package" >/dev/null 2>&1; then
+      success "${package} is already installed"
+    else
+      missing+=("$package")
+    fi
+  done
+
+  if ((${#missing[@]} > 0)); then
+    step 'Installing command-line tools'
+    brew install "${missing[@]}"
+  fi
+}
+
+is_cask_ready() {
+  local cask=$1
+  local marker=$2
+  local command_name=${3:-}
+
+  brew list --cask "$cask" >/dev/null 2>&1 && return 0
+  [[ -e "$marker" ]] && return 0
+  [[ -n "$command_name" ]] && command -v "$command_name" >/dev/null 2>&1 && return 0
+  return 1
+}
+
+install_required_apps() {
+  local missing=()
+
+  if is_cask_ready orbstack '/Applications/OrbStack.app' docker; then
+    success 'OrbStack is already installed'
+  else
+    missing+=(orbstack)
+  fi
+
+  if is_cask_ready gcloud-cli '/opt/homebrew/share/google-cloud-sdk' gcloud; then
+    success 'Google Cloud CLI is already installed'
+  else
+    missing+=(gcloud-cli)
+  fi
+
+  if ((${#missing[@]} > 0)); then
+    step 'Installing local development services'
+    brew install --cask "${missing[@]}"
+  fi
+}
+
+install_team_apps() {
+  local missing=()
+
+  if is_cask_ready slack '/Applications/Slack.app'; then
+    success 'Slack is already installed'
+  else
+    missing+=(slack)
+  fi
+
+  if is_cask_ready linear '/Applications/Linear.app'; then
+    success 'Linear is already installed'
+  else
+    missing+=(linear)
+  fi
+
+  if is_cask_ready visual-studio-code '/Applications/Visual Studio Code.app' code; then
+    success 'Visual Studio Code is already installed'
+  else
+    missing+=(visual-studio-code)
+  fi
+
+  if ((${#missing[@]} > 0)); then
+    step 'Installing team applications'
+    brew install --cask "${missing[@]}"
+  fi
+}
+
+configure_shell() {
+  local zshrc="$HOME/.zshrc"
+  local activation_line="eval \"\$(mise activate zsh)\""
+
+  touch "$zshrc"
+  if grep -Fq 'mise activate zsh' "$zshrc"; then
+    success 'mise is already activated in zsh'
+  else
+    printf '\n# Popina developer toolchain\n%s\n' "$activation_line" >> "$zshrc"
+    success 'mise activation added to ~/.zshrc'
+  fi
+}
+
+install_popina_cli() {
+  step 'Configuring the Popina toolchain'
+  mise use --global --yes "node@${NODE_VERSION}" "npm:pnpm@${PNPM_VERSION}"
+  mise exec "node@${NODE_VERSION}" -- npm install --global --no-audit --no-fund "@popina/cli@${POPINA_CLI_VERSION}"
+
+  local installed_version
+  installed_version="$(mise exec "node@${NODE_VERSION}" -- popina --version)"
+  success "Popina CLI ${installed_version} is ready"
+}
+
+start_orbstack() {
+  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+    success 'Docker-compatible runtime is running'
+    return
+  fi
+
+  if open -Ra OrbStack >/dev/null 2>&1; then
+    step 'Starting OrbStack'
+    open -ga OrbStack
+
+    local attempt
+    for ((attempt = 1; attempt <= 30; attempt += 1)); do
+      if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+        success 'OrbStack is running'
+        return
+      fi
+      sleep 2
+    done
+  fi
+
+  warn 'OrbStack is installed but not ready yet. Open it before choosing database setup.'
+}
+
+run_project_setup() {
+  prompt_workspace
+  mkdir -p "$WORKSPACE_DIR"
+
+  step "Opening the Popina setup wizard in ${WORKSPACE_DIR}"
+  (
+    cd "$WORKSPACE_DIR"
+    mise exec "node@${NODE_VERSION}" -- popina init < /dev/tty
+  )
+}
+
+print_line "${CYAN}${BOLD}  Popina${RESET} ${MUTED}developer setup v${INSTALLER_VERSION}${RESET}"
+print_line "${MUTED}  Web profile · macOS${RESET}"
+
+ensure_macos
+ensure_homebrew
+install_formulae
+install_required_apps
+
+if [[ "$SHOULD_INSTALL_TEAM_APPS" == ask ]]; then
+  if confirm 'Install Slack, Linear, and Visual Studio Code?' yes; then
+    SHOULD_INSTALL_TEAM_APPS=true
+  else
+    SHOULD_INSTALL_TEAM_APPS=false
+  fi
+fi
+
+if [[ "$SHOULD_INSTALL_TEAM_APPS" == true ]]; then
+  install_team_apps
+else
+  note 'Skipping optional team applications.'
+fi
+
+configure_shell
+install_popina_cli
+start_orbstack
+
+if [[ "$SHOULD_INITIALIZE_PROJECT" == ask ]]; then
+  if confirm 'Create a workspace and start the Popina project setup?' yes; then
+    SHOULD_INITIALIZE_PROJECT=true
+  else
+    SHOULD_INITIALIZE_PROJECT=false
+  fi
+fi
+
+if [[ "$SHOULD_INITIALIZE_PROJECT" == true ]]; then
+  run_project_setup
+else
+  expand_workspace_path
+  print_line "\n${GREEN}${BOLD}Your Mac is ready for Popina.${RESET}"
+  print_line "Run this when you want to create the project:"
+  print_line "  ${CYAN}mkdir -p \"${WORKSPACE_DIR}\" && cd \"${WORKSPACE_DIR}\" && popina init${RESET}"
+fi
+
+print_line "\n${GREEN}${BOLD}Setup complete.${RESET} Open a new terminal to use the activated mise environment."
