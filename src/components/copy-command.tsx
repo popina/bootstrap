@@ -34,7 +34,7 @@ export function CopyCommand({ command }: CopyCommandProps) {
         <span aria-hidden="true" className="command-prompt">
           $
         </span>
-        <code>{command}</code>
+        <code translate="no">{command}</code>
       </div>
       <button className="copy-button" type="button" onClick={handleCopy}>
         {copyState === 'copied' ? (
