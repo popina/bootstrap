@@ -1,5 +1,6 @@
 import { CopyCommand } from '../components/copy-command'
-import { PopinaMark } from '../components/popina-mark'
+import { SiteFooter } from '../components/site-footer'
+import { SiteHeader } from '../components/site-header'
 
 const installCommand = 'curl -fsSL https://popina.sh/install | bash'
 
@@ -31,18 +32,7 @@ export default function HomePage() {
         Skip to content
       </a>
 
-      <header className="site-header">
-        <a className="brand" href="/" aria-label="Popina developer setup home">
-          <span className="brand-mark">
-            <PopinaMark />
-          </span>
-          <span>popina.sh</span>
-        </a>
-        <nav aria-label="Utility navigation">
-          <a href="/install">Review script</a>
-          <a href="https://github.com/popina/bootstrap">Source</a>
-        </nav>
-      </header>
+      <SiteHeader />
 
       <main id="main-content">
         <section className="hero" aria-labelledby="hero-title">
@@ -61,7 +51,7 @@ export default function HomePage() {
 
             <p className="command-note">
               Always review scripts before running them.{' '}
-              <a href="/install">Read this one</a>.
+              <a href="/review">Read this one</a>.
             </p>
           </div>
 
@@ -163,16 +153,7 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer>
-        <div className="footer-brand">
-          <PopinaMark />
-          <span>Built for the people building Popina.</span>
-        </div>
-        <div className="footer-links">
-          <a href="/install">Installer</a>
-          <a href="https://github.com/popina/bootstrap">GitHub</a>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

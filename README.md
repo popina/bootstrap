@@ -20,6 +20,9 @@ Mobile and Linux profiles are intentionally unavailable for now.
 
 Read [`public/install`](./public/install), or inspect the deployed script:
 
+- readable and highlighted: <https://popina.sh/review>
+- raw for your terminal: <https://popina.sh/install>
+
 ```sh
 curl -fsSL https://popina.sh/install | less
 ```

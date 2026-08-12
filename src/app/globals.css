@@ -49,6 +49,7 @@ a {
 button,
 a {
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 :focus-visible {
@@ -118,11 +119,15 @@ a {
 }
 
 .site-header nav {
-  gap: 28px;
+  gap: clamp(12px, 2.5vw, 28px);
 }
 
 .site-header nav a,
 .footer-links a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 7px;
   color: var(--muted);
   font-size: 14px;
   font-weight: 650;
@@ -132,6 +137,19 @@ a {
 .site-header nav a:hover,
 .footer-links a:hover {
   color: var(--ink);
+}
+
+.site-header nav a[aria-current="page"] {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 3px;
+}
+
+.source-link svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
 }
 
 .hero {
@@ -176,6 +194,12 @@ h2,
 h3,
 p {
   text-wrap: pretty;
+}
+
+h1[id],
+h2[id],
+h3[id] {
+  scroll-margin-top: 24px;
 }
 
 h1 {
@@ -528,6 +552,206 @@ h1 {
   line-height: 1.62;
 }
 
+.review-main {
+  min-width: 0;
+}
+
+.review-hero {
+  display: grid;
+  min-height: 560px;
+  align-items: center;
+  gap: clamp(56px, 9vw, 140px);
+  padding: 96px 0 108px;
+  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+}
+
+.review-hero h1 {
+  max-width: 760px;
+  margin-bottom: 0;
+  font-size: clamp(3.5rem, 7vw, 6.6rem);
+}
+
+.review-intro {
+  min-width: 0;
+}
+
+.review-intro .command-shell {
+  align-items: stretch;
+  flex-direction: column;
+  padding: 15px;
+}
+
+.review-intro .command-line {
+  min-height: 38px;
+}
+
+.review-intro .copy-button {
+  width: 100%;
+}
+
+.review-intro > p {
+  max-width: 590px;
+  margin: 0 0 30px;
+  color: var(--muted);
+  font-size: clamp(1.05rem, 1.5vw, 1.22rem);
+  line-height: 1.65;
+}
+
+.review-intro > p code {
+  padding: 0.15em 0.38em;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.5);
+  font-family: var(--mono);
+  font-size: 0.82em;
+  white-space: nowrap;
+}
+
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin-top: 16px;
+}
+
+.review-actions a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.review-actions a:hover {
+  color: var(--ink);
+}
+
+.review-actions svg {
+  width: 17px;
+  height: 17px;
+}
+
+.review-summary {
+  display: grid;
+  gap: clamp(64px, 9vw, 140px);
+  padding: 112px 0 124px;
+  border-top: 1px solid var(--line);
+  grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.25fr);
+}
+
+.review-summary-heading h2,
+.script-heading h2 {
+  margin: 22px 0 24px;
+  font-size: clamp(2.35rem, 4.5vw, 4.25rem);
+  font-weight: 720;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+.review-summary-heading > p:last-child {
+  max-width: 460px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.change-grid {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: 0 34px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  list-style: none;
+}
+
+.change-grid li {
+  min-width: 0;
+  padding: 28px 0 34px;
+  border-top: 1px solid var(--line-strong);
+}
+
+.change-grid h3 {
+  margin: 20px 0 10px;
+  font-size: 1.25rem;
+  letter-spacing: -0.03em;
+}
+
+.change-grid p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.script-section {
+  padding: 112px 0 124px;
+  border-top: 1px solid var(--line);
+}
+
+.script-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 32px;
+  margin-bottom: 44px;
+}
+
+.script-heading h2 {
+  margin-bottom: 0;
+}
+
+.script-heading > p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font: 650 12px/1.5 var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.highlighted-script {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  background: #0d1117;
+  box-shadow: var(--shadow);
+}
+
+.highlighted-script pre {
+  max-height: min(78vh, 960px);
+  margin: 0;
+  padding: 30px 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  font: 500 13px/1.75 var(--mono);
+  tab-size: 2;
+}
+
+.highlighted-script code {
+  display: block;
+  min-width: max-content;
+}
+
+.highlighted-script .line {
+  display: inline-block;
+  min-width: 100%;
+  padding-right: 30px;
+}
+
+.highlighted-script .line-number {
+  display: inline-block;
+  width: 4ch;
+  margin-right: 24px;
+  color: #6e7681;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  user-select: none;
+}
+
 footer {
   display: flex;
   min-height: 128px;
@@ -580,7 +804,9 @@ footer {
   }
 
   .section-heading,
-  .process {
+  .process,
+  .review-hero,
+  .review-summary {
     grid-template-columns: 1fr;
   }
 
@@ -589,6 +815,18 @@ footer {
   }
 
   .process {
+    gap: 64px;
+  }
+
+  .review-hero {
+    min-height: auto;
+  }
+
+  .review-intro {
+    max-width: 680px;
+  }
+
+  .review-summary {
     gap: 64px;
   }
 }
@@ -603,11 +841,7 @@ footer {
   }
 
   .site-header nav {
-    gap: 16px;
-  }
-
-  .site-header nav a:first-child {
-    display: none;
+    gap: 12px;
   }
 
   .hero {
@@ -639,8 +873,42 @@ footer {
   }
 
   .profiles,
-  .process {
+  .process,
+  .review-summary,
+  .script-section {
     padding: 82px 0 90px;
+  }
+
+  .review-hero {
+    gap: 48px;
+    padding: 72px 0 82px;
+  }
+
+  .review-hero h1 {
+    font-size: clamp(3.05rem, 15vw, 5.2rem);
+  }
+
+  .change-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .script-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .highlighted-script {
+    border-radius: var(--radius-sm);
+  }
+
+  .highlighted-script pre {
+    padding: 24px 0;
+    font-size: 12px;
+  }
+
+  .highlighted-script .line-number {
+    margin-right: 17px;
   }
 
   .profile-grid {
@@ -657,6 +925,21 @@ footer {
     flex-direction: column;
     justify-content: center;
     gap: 24px;
+  }
+}
+
+@media (max-width: 520px) {
+  .brand > span:last-child {
+    display: none;
+  }
+
+  .site-header nav a,
+  .footer-links a {
+    font-size: 12px;
+  }
+
+  .site-header nav {
+    gap: 8px;
   }
 }
 
